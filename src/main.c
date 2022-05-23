@@ -70,6 +70,18 @@ char *read_file(char *filepath)
     return (buffer);
 }
 
+void remove_char_at_the_end(char *str)
+{
+    int i = strlen(str) - 1;
+
+    for (; i >= 0; i--) {
+        if (str[i] == '\n')
+            str[i] = '\0';
+        else
+            break;
+    }
+}
+
 int write_new_content(char *filepath)
 {
     char *buffer = read_file(filepath);
@@ -81,12 +93,14 @@ int write_new_content(char *filepath)
     int fd = open(filepath, O_WRONLY | O_TRUNC);
     if (fd == -1)
         return (84);
+    remove_char_at_the_end(new_buffer);
+    strcat(new_buffer, "\n");
     write(fd, new_buffer, strlen(new_buffer));
-    if (new_buffer[strlen(new_buffer) - 1] != '\n')
-        write(fd, "\n", 1);
     close(fd);
     if (strcmp(buffer, new_buffer) != 0)
         printf("Fixed: \033[0;34m%s\033[0m\n", filepath);
+    else
+        printf("No fix: \033[0;33m%s\033[0m\n", filepath);
     free(buffer);
     free(new_buffer);
     return 0;
@@ -100,7 +114,7 @@ int contains_str(char *str, char *to_find)
         if (str[i] == to_find[j]) {
             j++;
             if (to_find[j] == '\0')
-                return (i - j + 1);
+                return 1;
         } else
             j = 0;
     }
@@ -111,6 +125,7 @@ void open_folder(char *folderpath)
 {
     DIR *dir = opendir(folderpath);
     struct dirent *file;
+
     if (dir == NULL)
         return;
     while ((file = readdir(dir)) != NULL) {
@@ -134,9 +149,7 @@ void open_folder(char *folderpath)
             strcat(new_filepath, folderpath);
             strcat(new_filepath, "/");
             strcat(new_filepath, file->d_name);
-            if (contains_str(file->d_name, ".c") == -1)
-                printf("Skipped: \033[0;31m%s\033[0m\n", new_filepath);
-            else
+            if (contains_str(file->d_name, ".c") == 1 || contains_str(file->d_name, ".h") == 1)
                 write_new_content(new_filepath);
             free(new_filepath);
         }
