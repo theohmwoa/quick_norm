@@ -23,11 +23,12 @@ char *exchange_tabs(char *str)
     int buffsize = 8096;
     char *buff = malloc(buffsize);
     int index = 0;
-
     if (buff == NULL)
         return (NULL);
     for (int i = 0; str[i] != '\0'; i++) {
         if ((str[i] == '\t' || str[i] == ' ') && end_of_line(str, i))
+            continue;
+        if (str[i] == '\n' && str[i + 1] == '\n' && str[i + 2] == '\n')
             continue;
         if (str[i] == '\t') {
             buff[index] = ' ';
@@ -58,7 +59,6 @@ char *read_file(char *filepath)
     char *buffer = NULL;
     int fd = open(filepath, O_RDONLY);
     int size = 0;
-
     if (fd == -1)
         return (NULL);
     size = lseek(fd, 0, SEEK_END);
@@ -85,16 +85,32 @@ int write_new_content(char *filepath)
     if (new_buffer[strlen(new_buffer) - 1] != '\n')
         write(fd, "\n", 1);
     close(fd);
+    if (strcmp(buffer, new_buffer) != 0)
+        printf("Fixed: \033[0;34m%s\033[0m\n", filepath);
     free(buffer);
     free(new_buffer);
     return 0;
+}
+
+int contains_str(char *str, char *to_find)
+{
+    int i = 0;
+    int j = 0;
+    for (; str[i] != '\0'; i++) {
+        if (str[i] == to_find[j]) {
+            j++;
+            if (to_find[j] == '\0')
+                return (i - j + 1);
+        } else
+            j = 0;
+    }
+    return (-1);
 }
 
 void open_folder(char *folderpath)
 {
     DIR *dir = opendir(folderpath);
     struct dirent *file;
-
     if (dir == NULL)
         return;
     while ((file = readdir(dir)) != NULL) {
@@ -118,7 +134,10 @@ void open_folder(char *folderpath)
             strcat(new_filepath, folderpath);
             strcat(new_filepath, "/");
             strcat(new_filepath, file->d_name);
-            write_new_content(new_filepath);
+            if (contains_str(file->d_name, ".c") == -1)
+                printf("Skipped: \033[0;31m%s\033[0m\n", new_filepath);
+            else
+                write_new_content(new_filepath);
             free(new_filepath);
         }
     }
@@ -127,6 +146,7 @@ void open_folder(char *folderpath)
 
 int main(int ac, char **av)
 {
+    setbuf(stdout, NULL);
     if (ac == 2) {
         if (av[1][0] == '-' && av[1][1] == 'h') {
             puts("USAGE\n\t./tab_to_space [-h] [folder ...]\nDESCRIPTION\n\t-h\t\tDisplay the usage and quit.");
